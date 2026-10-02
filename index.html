@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>好市袋著走｜花園夜市</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+/* 活動公版色：米白底、深藍主色、紅色強調、橄欖綠標籤 */
+:root{
+  --bg:#fdf7eb; --card:#ffffff; --line:#e6dcc6; --ink:#24304f; --muted:#7c7563;
+  --navy:#1e3a8a; --red:#dc2626; --olive:#6e7a2d; --ok:#15803d; --warn:#b45309;
+  --mono:'JetBrains Mono',ui-monospace,monospace; --sans:'Noto Sans TC',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100dvh;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 16px calc(env(safe-area-inset-bottom,0px) + 24px)}
+.wrap{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{display:flex;flex-direction:column}
+.brand b{font-size:22px;font-weight:900;color:var(--navy);letter-spacing:.04em}
+.brand small{font-size:12px;color:var(--muted);letter-spacing:.08em}
+.tag{font-size:12px;font-weight:700;color:#fff;background:var(--olive);padding:4px 10px;border-radius:99px;white-space:nowrap}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#bbb;margin-right:6px;vertical-align:middle}
+.dot.on{background:var(--ok)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+h2{font-size:15px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+label{font-size:13px;color:var(--muted);font-weight:500}
+input,select{font:inherit;font-size:18px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);width:100%}
+input:focus,select:focus{outline:none;border-color:var(--navy)}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+button{font:inherit;font-weight:700;border:none;border-radius:12px;padding:14px 16px;font-size:17px;cursor:pointer;background:var(--navy);color:#fff}
+button:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+button.ghost{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}
+button.red{background:var(--red)}
+button.sm{padding:8px 12px;font-size:14px}
+button:disabled{opacity:.4;cursor:not-allowed}
+.amount{font-family:var(--mono);font-size:44px;font-weight:700;text-align:center;letter-spacing:.02em;padding:8px}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.keys button{background:#f3ecdc;color:var(--ink);font-size:24px;padding:14px 0}
+.keys button.fn{font-size:16px;color:var(--muted)}
+.big{font-family:var(--mono);font-size:56px;font-weight:700;letter-spacing:.18em;text-align:center;color:var(--navy)}
+.qr{display:flex;justify-content:center;padding:6px}
+.qr img,.qr canvas{width:220px!important;height:220px!important}
+.msg{font-size:15px;padding:10px 12px;border-radius:10px;background:#f3ecdc}
+.msg.ok{background:#dcfce7;color:var(--ok)} .msg.bad{background:#fee2e2;color:var(--red)} .msg.warn{background:#fef3c7;color:var(--warn)}
+.stock{display:flex;align-items:baseline;justify-content:center;gap:8px}
+.stock b{font-family:var(--mono);font-size:64px;color:var(--red);line-height:1}
+.stock span{font-size:18px;color:var(--muted)}
+.list{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px dashed var(--line);font-size:14px}
+.item:first-child{border-top:none}
+.item .code{font-family:var(--mono);font-weight:700;color:var(--navy)}
+.item .sub{color:var(--muted);font-size:12px}
+.pill{font-size:12px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.pill.ok{background:#dcfce7;color:var(--ok)} .pill.wait{background:#e0e7ff;color:var(--navy)} .pill.paper{background:#fef3c7;color:var(--warn)}
+.proof{border:3px solid var(--navy);border-radius:18px;background:#fff;overflow:hidden}
+.proof .hd{background:var(--red);color:#fff;text-align:center;padding:14px;font-weight:900;font-size:24px;letter-spacing:.12em}
+.proof .bd{padding:16px;display:flex;flex-direction:column;gap:10px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:16px;border-bottom:1px dashed var(--line);padding-bottom:8px}
+.kv span{color:var(--muted)} .kv b{text-align:right}
+.stamp{align-self:center;font-size:26px;font-weight:900;padding:6px 18px;border:4px solid currentColor;border-radius:10px;transform:rotate(-6deg);letter-spacing:.1em}
+.tabs{display:flex;gap:6px;background:#efe6d2;padding:4px;border-radius:12px}
+.tabs button{flex:1;background:transparent;color:var(--muted);padding:10px 4px;font-size:15px}
+.tabs button.on{background:#fff;color:var(--navy)}
+.foot{font-size:12px;color:var(--muted);text-align:center;line-height:1.6}
+.seq{font-size:20px;font-weight:900;color:var(--red)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15px}
+.toggle input{width:auto;transform:scale(1.4)}
+@media (prefers-reduced-motion:no-preference){.pop{animation:pop .25s ease-out}@keyframes pop{from{transform:scale(.96);opacity:.4}to{transform:none;opacity:1}}}
+.bar{height:14px;background:#efe6d2;border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--olive),var(--ok));border-radius:99px;transition:width .4s}
+.progress{display:flex;justify-content:space-between;align-items:baseline}
+.progress b{font-family:var(--mono);font-size:36px;color:var(--navy)}
+.progress span{color:var(--muted)}
+.quota{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:15px}
+.quota b{font-family:var(--mono);font-size:26px;color:var(--red)}
+.hero{text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.hero .n{font-size:22px;font-weight:900;color:var(--ok)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted)}
+.check input{width:auto;margin-top:3px;transform:scale(1.3)}
+textarea{font:inherit;font-size:15px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;width:100%;min-height:110px}
+.tabs button{font-size:14px}
+[hidden]{display:none!important}
+#view{display:flex;flex-direction:column;gap:14px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header>
+    <div class="brand"><b>好市袋著走</b><small>台南花園夜市・消費滿 $500 換茄芷袋</small></div>
+    <span class="tag" id="modeTag"><span class="dot" id="conn"></span>連線中</span>
+  </header>
+  <div id="view"><div class="card"><p>載入中…</p></div></div>
+  <p class="foot">經濟部「來趣・踅市仔」系列活動｜在花園夜市累計消費滿 $500 可換茄芷袋一個<br>每人每日限換 1 個，每週名額有限，送完為止<br>兌換地點：花園夜市服務處門口（臨海安路側）</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyDoT4cAuLGTC9ZAP3uG-0tRNRDsAD-l1-4",
+  authDomain: "nightmarket-tasks.firebaseapp.com",
+  databaseURL: "https://nightmarket-tasks-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nightmarket-tasks",
+  storageBucket: "nightmarket-tasks.firebasestorage.app",
+  messagingSenderId: "241280209238",
+  appId: "1:241280209238:web:325be906e04a95987986f7"
+});
+const db = firebase.database();
+const ROOT = 'bag2026';                        // 與攤車打卡資料分開
+const R = p => db.ref(ROOT + '/' + p);
+const MIN = 500;
+const DEFAULTS = { weekly: 15, pin: '0000' };
+const CHARS = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => '$' + Number(n || 0).toLocaleString('zh-TW');
+const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });   // YYYY-MM-DD
+const weekOf = day => {                                   // 週一為一週開始
+  const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7);
+  return d.toISOString().slice(0, 10);
+};
+const weekLabel = wk => { const d = new Date(wk + 'T12:00:00Z'); const e = new Date(d); e.setUTCDate(e.getUTCDate() + 6);
+  return `${d.getUTCMonth()+1}/${d.getUTCDate()}–${e.getUTCMonth()+1}/${e.getUTCDate()}`; };
+const hm = t => t ? new Date(t).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+const md = d => d ? d.slice(5).replace('-', '/') : '';
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem('bag_' + k)); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem('bag_' + k, JSON.stringify(v)); } catch {} }
+};
+const baseURL = location.origin + location.pathname;
+const randCode = n => { let c = ''; for (let i = 0; i < n; i++) c += CHARS[Math.floor(Math.random() * CHARS.length)]; return c; };
+
+const q = new URLSearchParams(location.search);
+const MODE = q.has('desk') ? 'desk' : 'customer';
+const MODE_NAME = MODE === 'desk' ? '服務台' : '集點卡';
+
+db.ref('.info/connected').on('value', s => {
+  const on = !!s.val();
+  $('#conn').classList.toggle('on', on);
+  $('#modeTag').lastChild.textContent = on ? MODE_NAME : '離線';
+});
+$('#modeTag').lastChild.textContent = MODE_NAME;
+
+// 共用即時資料
+let settings = { ...DEFAULTS }, weekData = {};
+const WK = weekOf(today());
+let refresh = () => {};
+R('settings').on('value', s => { settings = { ...DEFAULTS, ...(s.val() || {}) }; refresh(); });
+R('weeks/' + WK).on('value', s => { weekData = s.val() || {}; refresh(); });
+const used = () => weekData.used || 0;
+const left = () => Math.max(0, settings.weekly - used());
+
+// 搶本週名額：used = 目前有效名額數，n = 清冊序號（只增不減）
+async function takeSlot(){
+  const r = await R('weeks/' + WK).transaction(w => {
+    w = w || { used: 0, n: 0 };
+    if ((w.used || 0) >= settings.weekly) return;          // 中止＝名額已滿
+    return { used: (w.used || 0) + 1, n: (w.n || 0) + 1 };
+  });
+  return r.committed ? r.snapshot.val().n : null;
+}
+async function releaseSlot(wk){
+  await R('weeks/' + wk + '/used').transaction(n => Math.max(0, (n || 1) - 1));
+}
+
+/* ═════════ 民眾：集點卡 ═════════ */
+function customerView(){
+  let code = store.get('card'), card = null, off = null, panel = false;
+
+  function listen(){
+    if (off) off();
+    if (!code) { card = null; render(); return; }
+    const ref = R('cards/' + code);
+    const h = ref.on('value', s => {
+      card = s.val();
+      // 不是今天的卡、而且還沒達標 → 作廢，重開
+      if (!card || (card.day !== today() && (card.status !== 'in' || card.claimed))) { code = null; store.set('card', null); card = null; }
+      render();
+    });
+    off = () => ref.off('value', h);
+  }
+  refresh = () => render();
+
+  function quotaHTML(){
+    return `<div class="quota"><span>本週（${weekLabel(WK)}）茄芷袋名額</span><span><b>${left()}</b> / ${settings.weekly} 剩餘</span></div>`;
+  }
+
+  function render(){
+    const V = $('#view');
+    if (!card){
+      V.innerHTML = `
+        <div class="card">${quotaHTML()}${left() === 0 ? '<div class="msg bad">本週名額已滿，下週再來！</div>' : ''}</div>
+        <div class="card"><h2>開一張集點卡</h2>
+          <p style="font-size:15px">在花園夜市消費後，自己輸入<b>攤位排號</b>和金額，累計滿 <b>$${MIN}</b> 就能換茄芷袋。</p>
+          <div><label for="nm">姓名</label><input id="nm" autocomplete="name" placeholder="與領取時簽名相同"></div>
+          <div><label for="tl">手機末 3 碼</label><input id="tl" inputmode="numeric" maxlength="3" placeholder="例：678"></div>
+          <label class="check" for="ag"><input type="checkbox" id="ag"><span>我同意以上資料僅供本活動兌換與簽收核對使用。</span></label>
+          <div id="err"></div>
+          <button id="mk">建立集點卡</button>
+        </div>`;
+      $('#mk').onclick = create;
+      return;
+    }
+    const total = card.total || 0, pct = Math.min(100, total / MIN * 100);
+    const items = Object.values(card.items || {}).sort((a,b) => a.ts - b.ts);
+    let status = '';
+    if (card.claimed) status = `
+      <div class="hero"><div class="stamp" style="color:var(--ok)">已領取</div>
+        <p style="color:var(--muted)">${md(card.claimedDay)} ${hm(card.claimedAt)} 已在服務台領取茄芷袋，謝謝參加！</p></div>`;
+    else if (card.status === 'in') status = `
+      <div class="hero pop"><div class="n">恭喜！你在本週 ${settings.weekly} 個名額內</div>
+        <p>請到 <b>花園夜市服務處門口（臨海安路側）</b><br>出示這個畫面，簽名後領取茄芷袋</p></div>`;
+    else if (card.status === 'full') status = `
+      <div class="msg bad"><b>已累計滿 $${MIN}，但本週 ${settings.weekly} 個名額剛好額滿。</b><br>很抱歉，歡迎下週再來參加！</div>`;
+    else if (left() === 0) status = `<div class="msg bad">本週名額已滿，累計滿額也無法兌換了，歡迎下週再來！</div>`;
+
+    V.innerHTML = `
+      <div class="card">${quotaHTML()}</div>
+      <div class="proof">
+        <div class="hd">好市袋著走 集點卡</div>
+        <div class="bd">
+          <div class="big">${esc(code)}</div>
+          <div class="kv"><span>姓名</span><b>${esc(card.name)}（${esc(card.tail)}）</b></div>
+          <div class="progress"><span>已累計</span><b>${money(total)}</b><span>/ $${MIN}</span></div>
+          <div class="bar"><i style="width:${pct}%"></i></div>
+          ${total < MIN && !card.status ? `<p style="text-align:center;color:var(--muted)">還差 <b style="color:var(--red)">${money(MIN - total)}</b></p>` : ''}
+          ${status}
+        </div>
+      </div>
+      ${!card.status && left() > 0 ? `<button id="ask" class="red">＋ 新增一筆消費</button>` : ''}
+      <div class="card" id="confirm" hidden></div>
+      <div class="card"><h2>已登記的消費</h2><div class="list">${items.length ? items.map(i => `
+        <div class="item"><span class="code">${esc(i.stall)}</span><div><div class="sub">${hm(i.ts)}</div></div><b>${money(i.amount)}</b></div>`).join('')
+        : '<p style="color:var(--muted);font-size:14px">還沒有消費紀錄。買完東西後，問老闆攤位是幾排幾號，按上方按鈕新增。</p>'}</div></div>`;
+    if ($('#ask')) $('#ask').onclick = () => { panel = true; showConfirm(); };
+    if (panel) showConfirm();
+  }
+
+  async function create(){
+    const name = $('#nm').value.trim(), tail = $('#tl').value.trim();
+    if (!name || !/^\d{3}$/.test(tail)) { $('#err').innerHTML = `<div class="msg bad">請填姓名和手機末 3 碼</div>`; return; }
+    if (!$('#ag').checked) { $('#err').innerHTML = `<div class="msg bad">請勾選同意後再建立</div>`; return; }
+    $('#mk').disabled = true;
+    for (let i = 0; i < 12; i++){
+      const c = randCode(4);
+      const r = await R('cards/' + c).transaction(cur => cur === null
+        ? { name, tail, day: today(), week: WK, created: Date.now(), total: 0, status: '', claimed: false } : undefined);
+      if (r.committed) { code = c; store.set('card', c); listen(); return; }
+    }
+    $('#mk').disabled = false; $('#err').innerHTML = `<div class="msg bad">建立失敗，請確認網路後再試一次</div>`;
+  }
+
+  function showConfirm(){
+    const el = $('#confirm'); if (!el) return;
+    el.hidden = false;
+    el.innerHTML = `
+      <h2>新增消費（請問老闆攤位是幾排幾號）</h2>
+      <div class="row">
+        <div><label for="rw">第幾排</label><input id="rw" inputmode="numeric" maxlength="3" placeholder="例：3" autocomplete="off"></div>
+        <div><label for="no">第幾號</label><input id="no" inputmode="numeric" maxlength="3" placeholder="例：12" autocomplete="off"></div>
+      </div>
+      <div><label for="am">這次消費金額</label><input id="am" inputmode="numeric" placeholder="例：120" autocomplete="off"></div>
+      <div id="cerr"></div>
+      <div class="row"><button class="ghost" id="cx">取消</button><button id="ok">加入累計</button></div>`;
+    $('#cx').onclick = () => { panel = false; el.hidden = true; };
+    $('#ok').onclick = submit;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function submit(){
+    const rw = $('#rw').value.trim(), no = $('#no').value.trim(), amount = parseInt($('#am').value, 10) || 0;
+    const err = t => $('#cerr').innerHTML = `<div class="msg bad">${t}</div>`;
+    if (!/^[0-9A-Za-z]{1,3}$/.test(rw) || !/^\d{1,3}$/.test(no)) return err('請填攤位的排和號（問老闆就知道）');
+    if (amount <= 0 || amount > 50000) return err('請輸入正確的金額');
+    const stall = `${rw.toUpperCase()}排${no}號`;
+    $('#ok').disabled = true;
+    const item = { stall, amount, ts: Date.now() };
+    const r = await R('cards/' + code).transaction(c => {
+      if (!c || c.status) return;
+      const key = 'i' + item.ts + randCode(3);
+      c.items = { ...(c.items || {}), [key]: item };
+      c.total = (c.total || 0) + amount;
+      return c;
+    });
+    if (!r.committed) { $('#ok').disabled = false; return err('這張集點卡已達標或已失效'); }
+    panel = false;
+    if (r.snapshot.val().total >= MIN){
+      const n = await takeSlot();
+      await R('cards/' + code).update(n ? { status: 'in', slot: n, week: WK, slotAt: Date.now() } : { status: 'full', week: WK });
+    }
+  }
+
+  listen();
+}
+
+/* ═════════ 服務台 ═════════ */
+function deskView(){
+  let tab = 'claim', cur = null, curCode = '', weekCards = [], logWeek = WK, offWeek = null;
+  const unlocked = () => store.get('desk') === settings.pin;
+
+  function lock(){
+    $('#view').innerHTML = `
+      <div class="card"><h2>服務台登入</h2>
+        <div><label for="pin">服務台密碼</label><input id="pin" type="password" inputmode="numeric"></div>
+        <button id="in">進入</button><div id="err"></div></div>`;
+    $('#in').onclick = () => {
+      if ($('#pin').value === settings.pin) { store.set('desk', settings.pin); shell(); }
+      else $('#err').innerHTML = `<div class="msg bad">密碼不對，請再試一次</div>`;
+    };
+  }
+
+  function shell(){
+    $('#view').innerHTML = `
+      <div class="card" id="stockCard"></div>
+      <div class="tabs"><button data-t="claim">領袋</button><button data-t="paper">紙本</button><button data-t="log">名單</button><button data-t="set">設定</button></div>
+      <div id="pane" style="display:flex;flex-direction:column;gap:14px"></div>`;
+    document.querySelector('.tabs').onclick = e => { if (e.target.dataset.t) { tab = e.target.dataset.t; pane(); } };
+    refresh = () => { if (!unlocked()) return lock(); paintStock(); };
+    watchWeek(WK); paintStock(); pane();
+  }
+
+  function watchWeek(wk){
+    if (offWeek) offWeek();
+    const qy = R('cards').orderByChild('week').equalTo(wk);
+    const h = qy.on('value', s => {
+      weekCards = Object.entries(s.val() || {}).map(([code, v]) => ({ code, ...v }));
+      paintStock(); if (tab === 'log') paintLog();
+    });
+    offWeek = () => qy.off('value', h);
+  }
+
+  function paintStock(){
+    const el = $('#stockCard'); if (!el) return;
+    const mine = logWeek === WK ? weekCards : [];
+    const claimed = mine.filter(c => c.claimed && c.status === 'in').length;
+    el.innerHTML = `<div class="stock"><span>本週剩</span><b>${left()}</b><span>/ ${settings.weekly} 名額</span></div>
+      <p style="text-align:center;color:var(--muted)">${weekLabel(WK)}｜已達標 ${used()} 人・已領袋 ${claimed} 人</p>`;
+  }
+
+  function pane(){
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+    const P = $('#pane');
+    if (tab === 'claim'){
+      P.innerHTML = `
+        <div class="card"><h2>輸入民眾集點卡上的 4 碼</h2>
+          <div class="row"><input id="code" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="4 碼" style="font-family:var(--mono);font-size:28px;letter-spacing:.2em;text-transform:uppercase"><button id="find" style="flex:0 0 auto">查詢</button></div>
+        </div>
+        <div class="card" id="res" hidden></div>`;
+      $('#find').onclick = find;
+      $('#code').onkeydown = e => { if (e.key === 'Enter') find(); };
+    } else if (tab === 'paper'){
+      P.innerHTML = `
+        <div class="card"><h2>民眾拿發票、收據或紙本購物憑證</h2>
+          <div class="row"><div><label for="pNm">姓名</label><input id="pNm"></div><div><label for="pTl">手機末 3 碼</label><input id="pTl" inputmode="numeric" maxlength="3"></div></div>
+          <div><label for="pAmt">憑證合計金額</label><input id="pAmt" inputmode="numeric" placeholder="例：520"></div>
+          <div><label for="pKind">憑證種類</label><select id="pKind"><option>發票</option><option>收據</option><option>紙本購物憑證</option></select></div>
+          <div><label for="pNote">備註（攤位或發票號碼，可不填）</label><input id="pNote"></div>
+          <div id="pMsg"></div>
+          <button id="pGo" class="red">登記名額並發袋</button>
+        </div>`;
+      $('#pGo').onclick = paper;
+    } else if (tab === 'log'){
+      paintLog();
+    } else {
+      P.innerHTML = `
+        <div class="card"><h2>活動設定</h2>
+          <div><label for="wk">每週名額</label><input id="wk" type="number" value="${settings.weekly}"></div>
+          <div><label for="newPin">服務台密碼</label><input id="newPin" inputmode="numeric" value="${esc(settings.pin)}"></div>
+          <button id="save">儲存設定</button><div id="sMsg"></div>
+        </div>
+        <div class="card"><h2>民眾集點卡 QR code</h2>
+          <div class="qr" id="cqr"></div>
+          <p style="text-align:center;font-family:var(--mono);font-size:13px;word-break:break-all">${esc(baseURL)}</p>
+          <p class="foot">印出來貼在服務台和各攤位，民眾掃描就能開集點卡。</p>
+        </div>`;
+      new QRCode($('#cqr'), { text: baseURL, width: 440, height: 440 });
+      $('#save').onclick = async () => {
+        const weekly = Math.max(0, parseInt($('#wk').value, 10) || 0), pin = $('#newPin').value.trim() || '0000';
+        await R('settings').update({ weekly, pin }); store.set('desk', pin);
+        $('#sMsg').innerHTML = `<div class="msg ok">已儲存</div>`;
+      };
+    }
+  }
+
+  async function find(){
+    curCode = $('#code').value.trim().toUpperCase(); if (curCode.length !== 4) return;
+    cur = (await R('cards/' + curCode).get()).val();
+    paintRes();
+  }
+
+  function paintRes(msg = ''){
+    const el = $('#res'); if (!el) return; el.hidden = false;
+    if (!cur) { el.innerHTML = `<div class="msg bad">找不到集點卡 ${esc(curCode)}</div>`; return; }
+    const items = Object.values(cur.items || {}).sort((a,b) => a.ts - b.ts);
+    let state, can = false;
+    if (cur.claimed) state = `<span class="pill ok">已領過（${md(cur.claimedDay)} ${hm(cur.claimedAt)}）</span>`;
+    else if (cur.status === 'in' && cur.week === WK) { state = `<span class="pill wait">名額內・清冊第 ${cur.slot} 列</span>`; can = true; }
+    else if (cur.status === 'in') state = `<span class="pill paper">上週的名額，未領取</span>`;
+    else if (cur.status === 'full') state = `<span class="pill paper">滿額但本週名額已滿</span>`;
+    else if (cur.status === 'void') state = `<span class="pill paper">名額已取消</span>`;
+    else state = `<span class="pill paper">尚未滿 $${MIN}</span>`;
+    el.innerHTML = `
+      <div class="kv"><span>姓名</span><b>${esc(cur.name)}（${esc(cur.tail)}）</b></div>
+      <div class="kv"><span>累計</span><b>${money(cur.total)}</b></div>
+      <div>${state}</div>
+      <div class="list">${items.map(i => `<div class="item"><span class="code">${esc(i.stall)}</span><div><div class="sub">${md(cur.day)} ${hm(i.ts)}</div></div><b>${money(i.amount)}</b></div>`).join('')}</div>
+      ${msg}
+      ${can ? `<button class="red" id="give">確認發袋</button>` : ''}`;
+    if (can) $('#give').onclick = give;
+  }
+
+  async function give(){
+    $('#give').disabled = true;
+    const r = await R('cards/' + curCode).transaction(c => (c && c.status === 'in' && !c.claimed) ? { ...c, claimed: true, claimedAt: Date.now(), claimedDay: today() } : undefined);
+    cur = r.snapshot.val();
+    paintRes(r.committed
+      ? `<div class="msg ok" style="font-size:17px"><b>發一個茄芷袋</b><br>請民眾在本週〈民眾簽收清冊〉<b>第 ${cur.slot} 列</b>簽名</div>`
+      : `<div class="msg bad">這張卡剛剛已經領過了</div>`);
+  }
+
+  async function paper(){
+    const name = $('#pNm').value.trim(), tail = $('#pTl').value.trim(), amount = parseInt($('#pAmt').value, 10) || 0;
+    const m = t => $('#pMsg').innerHTML = t;
+    if (!name || !/^\d{3}$/.test(tail)) return m(`<div class="msg bad">請填姓名和手機末 3 碼</div>`);
+    if (amount < MIN) return m(`<div class="msg bad">未滿 $${MIN}，不能兌換</div>`);
+    $('#pGo').disabled = true;
+    const n = await takeSlot();
+    if (!n) { $('#pGo').disabled = false; return m(`<div class="msg bad">本週名額已滿</div>`); }
+    let c; for (let i = 0; i < 12; i++){ c = 'P' + randCode(3); if (!(await R('cards/' + c).get()).exists()) break; }
+    const now = Date.now();
+    await R('cards/' + c).set({ name, tail, day: today(), week: WK, created: now, total: amount, status: 'in', slot: n, slotAt: now,
+      claimed: true, claimedAt: now, claimedDay: today(), paper: true, kind: $('#pKind').value, note: $('#pNote').value.trim() });
+    ['#pNm','#pTl','#pAmt','#pNote'].forEach(s => $(s).value = '');
+    $('#pGo').disabled = false;
+    m(`<div class="msg ok" style="font-size:17px"><b>發一個茄芷袋</b><br>請民眾在本週〈民眾簽收清冊〉<b>第 ${n} 列</b>簽名</div>`);
+  }
+
+  function paintLog(){
+    const wks = []; for (let d = new Date('2026-10-05T12:00:00Z'); d <= new Date('2026-11-02T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 7)) wks.push(d.toISOString().slice(0,10));
+    if (!wks.includes(WK)) wks.push(WK);
+    const rows = weekCards.filter(c => c.slot).sort((a,b) => a.slot - b.slot);
+    const pend = weekCards.filter(c => !c.slot && c.total > 0).length;
+    $('#pane').innerHTML = `
+      <div class="card">
+        <div class="row" style="align-items:end">
+          <div><label for="lw">週次</label><select id="lw">${[...new Set(wks)].sort().map(w => `<option value="${w}" ${w===logWeek?'selected':''}>${weekLabel(w)}</option>`).join('')}</select></div>
+          <button class="ghost" id="csv" style="flex:0 0 auto">匯出 CSV</button>
+        </div>
+        <p style="color:var(--muted);font-size:13px">清冊序號｜另有 ${pend} 張集點卡累計中未達標</p>
+        <div class="list">${rows.length ? rows.map(c => `
+          <div class="item" style="${c.status==='void'?'opacity:.45;text-decoration:line-through':''}">
+            <span class="code">#${c.slot}</span>
+            <div>${esc(c.name)}（${esc(c.tail)}）・${money(c.total)}<div class="sub">${c.paper ? esc(c.kind) : '集點卡 ' + c.code}・${md(c.day)} ${hm(c.slotAt)}</div></div>
+            ${c.status === 'void' ? '<span class="pill paper">已取消</span>' : c.claimed ? '<span class="pill ok">已領</span>' : `<button class="ghost sm" data-void="${c.code}">取消名額</button>`}
+          </div>`).join('') : '<p style="color:var(--muted)">這週還沒有人達標。</p>'}</div>
+        <p class="foot" style="text-align:left">「取消名額」用在達標後一直沒來領的人，名額會還給本週其他民眾。</p>
+      </div>`;
+    $('#lw').onchange = e => { logWeek = e.target.value; watchWeek(logWeek); };
+    $('#csv').onclick = exportCSV;
+    $('#pane').querySelectorAll('[data-void]').forEach(b => b.onclick = () => {
+      if (!b.dataset.armed){ b.dataset.armed = 1; b.textContent = '再按一次確認'; b.classList.add('red');
+        return setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.textContent = '取消名額'; b.classList.remove('red'); } }, 4000); }
+      voidCard(b.dataset.void);
+    });
+  }
+
+  async function voidCard(code){
+    const c = weekCards.find(x => x.code === code); if (!c || c.claimed || c.status !== 'in') return;
+    await R('cards/' + code).update({ status: 'void', voidAt: Date.now() });
+    await releaseSlot(c.week);
+  }
+
+  function exportCSV(){
+    const head = ['週次','清冊序號','姓名','手機末3碼','累計金額','方式','消費明細','達標時間','狀態'];
+    const lines = weekCards.filter(c => c.slot).sort((a,b) => a.slot - b.slot).map(c => [
+      weekLabel(c.week), c.slot, c.name, "'" + c.tail, c.total, c.paper ? c.kind : '集點卡 ' + c.code,
+      Object.values(c.items || {}).map(i => `${i.stall} $${i.amount}`).join('；') || c.note || '',
+      `${md(c.day)} ${hm(c.slotAt)}`, c.status === 'void' ? '已取消' : c.claimed ? '已領' : '未領']);
+    const csv = '﻿' + [head, ...lines].map(l => l.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `好市袋著走_${weekLabel(logWeek).replace(/\//g,'')}.csv`; a.click();
+  }
+
+  R('settings').once('value').then(() => unlocked() ? shell() : lock());
+}
+
+(MODE === 'desk' ? deskView : customerView)();
+</script>
+</body>
+</html>
