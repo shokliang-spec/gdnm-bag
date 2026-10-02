@@ -155,14 +155,20 @@ const used = () => weekData.used || 0;
 const left = () => Math.max(0, settings.weekly - used());
 
 // 搶本週名額：used = 目前有效名額數，n = 清冊序號（只增不減）
-async function takeSlot(){
-  const r = await R('weeks/' + WK).transaction(w => {
+async function takeSlot(wk = WK){
+  const r = await R('weeks/' + wk).transaction(w => {
     w = w || { used: 0, n: 0 };
     if ((w.used || 0) >= settings.weekly) return;          // 中止＝名額已滿
     return { used: (w.used || 0) + 1, n: (w.n || 0) + 1 };
   });
   return r.committed ? r.snapshot.val().n : null;
 }
+// 候補序號：只增不減
+async function joinWait(wk = WK){
+  const r = await R('weeks/' + wk + '/wn').transaction(n => (n || 0) + 1);
+  return r.snapshot.val();
+}
+const isWait = c => c && (c.status === 'wait' || c.status === 'full');
 async function releaseSlot(wk){
   await R('weeks/' + wk + '/used').transaction(n => Math.max(0, (n || 1) - 1));
 }
@@ -176,9 +182,11 @@ function customerView(){
     if (!code) { card = null; render(); return; }
     const ref = R('cards/' + code);
     const h = ref.on('value', s => {
+      const was = card?.status;
       card = s.val();
+      if (was === 'wait' && card?.status === 'in') { try { navigator.vibrate?.([200,100,200]); } catch {} }
       // 不是今天的卡、而且還沒達標 → 作廢，重開
-      if (!card || (card.day !== today() && (card.status !== 'in' || card.claimed))) { code = null; store.set('card', null); card = null; }
+      if (!card || (card.day !== today() && !isWait(card) && (card.status !== 'in' || card.claimed))) { code = null; store.set('card', null); card = null; }
       render();
     });
     off = () => ref.off('value', h);
@@ -193,7 +201,7 @@ function customerView(){
     const V = $('#view');
     if (!card){
       V.innerHTML = `
-        <div class="card">${quotaHTML()}${left() === 0 ? '<div class="msg bad">本週名額已滿，下週再來！</div>' : ''}</div>
+        <div class="card">${quotaHTML()}${left() === 0 ? '<div class="msg warn">本週名額已滿，仍可開卡累計，滿 $500 可登記候補</div>' : ''}</div>
         <div class="card"><h2>開一張集點卡</h2>
           <p style="font-size:15px">在花園夜市消費後，自己輸入<b>攤位排號</b>和金額，累計滿 <b>$${MIN}</b> 就能換茄芷袋。</p>
           <div><label for="nm">姓名</label><input id="nm" autocomplete="name" placeholder="與領取時簽名相同"></div>
@@ -212,11 +220,13 @@ function customerView(){
       <div class="hero"><div class="stamp" style="color:var(--ok)">已領取</div>
         <p style="color:var(--muted)">${md(card.claimedDay)} ${hm(card.claimedAt)} 已在服務台領取茄芷袋，謝謝參加！</p></div>`;
     else if (card.status === 'in') status = `
-      <div class="hero pop"><div class="n">恭喜！你在本週 ${settings.weekly} 個名額內</div>
+      <div class="hero pop"><div class="n">${card.promoted ? '遞補成功！輪到你了' : `恭喜！你在本週 ${settings.weekly} 個名額內`}</div>
         <p>請到 <b>花園夜市服務處門口（臨海安路側）</b><br>出示這個畫面，簽名後領取茄芷袋</p></div>`;
-    else if (card.status === 'full') status = `
-      <div class="msg bad"><b>已累計滿 $${MIN}，但本週 ${settings.weekly} 個名額剛好額滿。</b><br>很抱歉，歡迎下週再來參加！</div>`;
-    else if (left() === 0) status = `<div class="msg bad">本週名額已滿，累計滿額也無法兌換了，歡迎下週再來！</div>`;
+    else if (isWait(card)) status = `
+      <div class="msg warn pop" style="font-size:15px;line-height:1.7"><b style="font-size:17px">已累計滿 $${MIN}！本週 ${settings.weekly} 個名額已滿</b><br>
+        你是 <b style="font-size:20px;color:var(--red)">候補第 ${card.waitNo || '?'} 位</b><br>
+        如有完成者沒有來領，將會通知你遞補。名額釋出時，這張卡會自動變成「遞補成功」，請稍後再打開這個網頁查看。</div>`;
+    else if (left() === 0) status = `<div class="msg warn">本週名額已滿，繼續累計滿 $${MIN} 可以登記候補</div>`;
 
     V.innerHTML = `
       <div class="card">${quotaHTML()}</div>
@@ -231,7 +241,7 @@ function customerView(){
           ${status}
         </div>
       </div>
-      ${!card.status && left() > 0 ? `<button id="ask" class="red">＋ 新增一筆消費</button>` : ''}
+      ${!card.status ? `<button id="ask" class="red">＋ 新增一筆消費</button>` : ''}
       <div class="card" id="confirm" hidden></div>
       <div class="card"><h2>已登記的消費</h2><div class="list">${items.length ? items.map(i => `
         <div class="item"><span class="code">${esc(i.stall)}</span><div><div class="sub">${hm(i.ts)}</div></div><b>${money(i.amount)}</b></div>`).join('')
@@ -290,7 +300,8 @@ function customerView(){
     panel = false;
     if (r.snapshot.val().total >= MIN){
       const n = await takeSlot();
-      await R('cards/' + code).update(n ? { status: 'in', slot: n, week: WK, slotAt: Date.now() } : { status: 'full', week: WK });
+      await R('cards/' + code).update(n ? { status: 'in', slot: n, week: WK, slotAt: Date.now() }
+                                         : { status: 'wait', waitNo: await joinWait(WK), week: WK, waitAt: Date.now() });
     }
   }
 
@@ -316,7 +327,7 @@ function deskView(){
   function shell(){
     $('#view').innerHTML = `
       <div class="card" id="stockCard"></div>
-      <div class="tabs"><button data-t="claim">領袋</button><button data-t="paper">紙本</button><button data-t="log">名單</button><button data-t="set">設定</button></div>
+      <div class="tabs"><button data-t="claim">領袋</button><button data-t="log">名單</button><button data-t="set">設定</button></div>
       <div id="pane" style="display:flex;flex-direction:column;gap:14px"></div>`;
     document.querySelector('.tabs').onclick = e => { if (e.target.dataset.t) { tab = e.target.dataset.t; pane(); } };
     refresh = () => { if (!unlocked()) return lock(); paintStock(); };
@@ -338,7 +349,7 @@ function deskView(){
     const mine = logWeek === WK ? weekCards : [];
     const claimed = mine.filter(c => c.claimed && c.status === 'in').length;
     el.innerHTML = `<div class="stock"><span>本週剩</span><b>${left()}</b><span>/ ${settings.weekly} 名額</span></div>
-      <p style="text-align:center;color:var(--muted)">${weekLabel(WK)}｜已達標 ${used()} 人・已領袋 ${claimed} 人</p>`;
+      <p style="text-align:center;color:var(--muted)">${weekLabel(WK)}｜已達標 ${used()} 人・已領袋 ${claimed} 人・候補 ${mine.filter(isWait).length} 人</p>`;
   }
 
   function pane(){
@@ -352,17 +363,6 @@ function deskView(){
         <div class="card" id="res" hidden></div>`;
       $('#find').onclick = find;
       $('#code').onkeydown = e => { if (e.key === 'Enter') find(); };
-    } else if (tab === 'paper'){
-      P.innerHTML = `
-        <div class="card"><h2>民眾拿發票、收據或紙本購物憑證</h2>
-          <div class="row"><div><label for="pNm">姓名</label><input id="pNm"></div><div><label for="pTl">手機末 3 碼</label><input id="pTl" inputmode="numeric" maxlength="3"></div></div>
-          <div><label for="pAmt">憑證合計金額</label><input id="pAmt" inputmode="numeric" placeholder="例：520"></div>
-          <div><label for="pKind">憑證種類</label><select id="pKind"><option>發票</option><option>收據</option><option>紙本購物憑證</option></select></div>
-          <div><label for="pNote">備註（攤位或發票號碼，可不填）</label><input id="pNote"></div>
-          <div id="pMsg"></div>
-          <button id="pGo" class="red">登記名額並發袋</button>
-        </div>`;
-      $('#pGo').onclick = paper;
     } else if (tab === 'log'){
       paintLog();
     } else {
@@ -400,7 +400,7 @@ function deskView(){
     if (cur.claimed) state = `<span class="pill ok">已領過（${md(cur.claimedDay)} ${hm(cur.claimedAt)}）</span>`;
     else if (cur.status === 'in' && cur.week === WK) { state = `<span class="pill wait">名額內・清冊第 ${cur.slot} 列</span>`; can = true; }
     else if (cur.status === 'in') state = `<span class="pill paper">上週的名額，未領取</span>`;
-    else if (cur.status === 'full') state = `<span class="pill paper">滿額但本週名額已滿</span>`;
+    else if (isWait(cur)) state = `<span class="pill paper">候補第 ${cur.waitNo || '?'} 位，尚未遞補</span>`;
     else if (cur.status === 'void') state = `<span class="pill paper">名額已取消</span>`;
     else state = `<span class="pill paper">尚未滿 $${MIN}</span>`;
     el.innerHTML = `
@@ -422,28 +422,12 @@ function deskView(){
       : `<div class="msg bad">這張卡剛剛已經領過了</div>`);
   }
 
-  async function paper(){
-    const name = $('#pNm').value.trim(), tail = $('#pTl').value.trim(), amount = parseInt($('#pAmt').value, 10) || 0;
-    const m = t => $('#pMsg').innerHTML = t;
-    if (!name || !/^\d{3}$/.test(tail)) return m(`<div class="msg bad">請填姓名和手機末 3 碼</div>`);
-    if (amount < MIN) return m(`<div class="msg bad">未滿 $${MIN}，不能兌換</div>`);
-    $('#pGo').disabled = true;
-    const n = await takeSlot();
-    if (!n) { $('#pGo').disabled = false; return m(`<div class="msg bad">本週名額已滿</div>`); }
-    let c; for (let i = 0; i < 12; i++){ c = 'P' + randCode(3); if (!(await R('cards/' + c).get()).exists()) break; }
-    const now = Date.now();
-    await R('cards/' + c).set({ name, tail, day: today(), week: WK, created: now, total: amount, status: 'in', slot: n, slotAt: now,
-      claimed: true, claimedAt: now, claimedDay: today(), paper: true, kind: $('#pKind').value, note: $('#pNote').value.trim() });
-    ['#pNm','#pTl','#pAmt','#pNote'].forEach(s => $(s).value = '');
-    $('#pGo').disabled = false;
-    m(`<div class="msg ok" style="font-size:17px"><b>發一個茄芷袋</b><br>請民眾在本週〈民眾簽收清冊〉<b>第 ${n} 列</b>簽名</div>`);
-  }
-
   function paintLog(){
     const wks = []; for (let d = new Date('2026-10-05T12:00:00Z'); d <= new Date('2026-11-02T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 7)) wks.push(d.toISOString().slice(0,10));
     if (!wks.includes(WK)) wks.push(WK);
     const rows = weekCards.filter(c => c.slot).sort((a,b) => a.slot - b.slot);
-    const pend = weekCards.filter(c => !c.slot && c.total > 0).length;
+    const waits = weekCards.filter(isWait).sort((a,b) => (a.waitNo||0) - (b.waitNo||0));
+    const pend = weekCards.filter(c => !c.slot && !isWait(c) && c.total > 0).length;
     $('#pane').innerHTML = `
       <div class="card">
         <div class="row" style="align-items:end">
@@ -454,10 +438,17 @@ function deskView(){
         <div class="list">${rows.length ? rows.map(c => `
           <div class="item" style="${c.status==='void'?'opacity:.45;text-decoration:line-through':''}">
             <span class="code">#${c.slot}</span>
-            <div>${esc(c.name)}（${esc(c.tail)}）・${money(c.total)}<div class="sub">${c.paper ? esc(c.kind) : '集點卡 ' + c.code}・${md(c.day)} ${hm(c.slotAt)}</div></div>
+            <div>${esc(c.name)}（${esc(c.tail)}）・${money(c.total)}<div class="sub">集點卡 ${c.code}・${md(c.day)} ${hm(c.slotAt)}</div></div>
             ${c.status === 'void' ? '<span class="pill paper">已取消</span>' : c.claimed ? '<span class="pill ok">已領</span>' : `<button class="ghost sm" data-void="${c.code}">取消名額</button>`}
           </div>`).join('') : '<p style="color:var(--muted)">這週還沒有人達標。</p>'}</div>
-        <p class="foot" style="text-align:left">「取消名額」用在達標後一直沒來領的人，名額會還給本週其他民眾。</p>
+        <p class="foot" style="text-align:left">「取消名額」用在達標後一直沒來領的人，取消後會自動由候補第 1 位遞補。</p>
+        <div id="vMsg"></div>
+      </div>
+      <div class="card"><h2>候補名單（${waits.length} 人）</h2>
+        <div class="list">${waits.length ? waits.map(c => `
+          <div class="item"><span class="code">候${c.waitNo}</span>
+            <div>${esc(c.name)}（${esc(c.tail)}）・${money(c.total)}<div class="sub">集點卡 ${c.code}・${md(c.day)} ${hm(c.waitAt)}</div></div>
+            <span class="pill paper">等待遞補</span></div>`).join('') : '<p style="color:var(--muted)">目前沒有候補。</p>'}</div>
       </div>`;
     $('#lw').onchange = e => { logWeek = e.target.value; watchWeek(logWeek); };
     $('#csv').onclick = exportCSV;
@@ -472,13 +463,30 @@ function deskView(){
     const c = weekCards.find(x => x.code === code); if (!c || c.claimed || c.status !== 'in') return;
     await R('cards/' + code).update({ status: 'void', voidAt: Date.now() });
     await releaseSlot(c.week);
+    const p = await promote(c.week);
+    const msg = p ? `<div class="msg ok">已由候補第 ${p.waitNo} 位 ${esc(p.name)}（${esc(p.tail)}）遞補，清冊第 ${p.slot} 列</div>`
+                  : `<div class="msg">名額已釋出，目前沒有候補，會留給下一位滿額的民眾</div>`;
+    setTimeout(() => { if ($('#vMsg')) $('#vMsg').innerHTML = msg; }, 150);
+  }
+
+  // 依候補順序把空出的名額給下一位
+  async function promote(wk){
+    const list = (await R('cards').orderByChild('week').equalTo(wk).get()).val() || {};
+    const waits = Object.entries(list).map(([code, v]) => ({ code, ...v })).filter(isWait).sort((a,b) => (a.waitNo||0) - (b.waitNo||0));
+    for (const w of waits){
+      const n = await takeSlot(wk); if (!n) return null;
+      const r = await R('cards/' + w.code).transaction(c => isWait(c) ? { ...c, status: 'in', slot: n, slotAt: Date.now(), promoted: true } : undefined);
+      if (r.committed) return { ...w, slot: n };
+      await releaseSlot(wk);                      // 這位剛好不在候補了，換下一位
+    }
+    return null;
   }
 
   function exportCSV(){
     const head = ['週次','清冊序號','姓名','手機末3碼','累計金額','方式','消費明細','達標時間','狀態'];
     const lines = weekCards.filter(c => c.slot).sort((a,b) => a.slot - b.slot).map(c => [
-      weekLabel(c.week), c.slot, c.name, "'" + c.tail, c.total, c.paper ? c.kind : '集點卡 ' + c.code,
-      Object.values(c.items || {}).map(i => `${i.stall} $${i.amount}`).join('；') || c.note || '',
+      weekLabel(c.week), c.slot, c.name, "'" + c.tail, c.total, '集點卡 ' + c.code,
+      Object.values(c.items || {}).map(i => `${i.stall} $${i.amount}`).join('；') || '',
       `${md(c.day)} ${hm(c.slotAt)}`, c.status === 'void' ? '已取消' : c.claimed ? '已領' : '未領']);
     const csv = '﻿' + [head, ...lines].map(l => l.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
     const a = document.createElement('a');
