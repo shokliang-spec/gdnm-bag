@@ -127,7 +127,7 @@ const db = firebase.database();
 const ROOT = 'bag2026';                        // 與攤車打卡資料分開
 const R = p => db.ref(ROOT + '/' + p);
 const MIN = 500;
-const DEFAULTS = { weekly: 15 };
+const DEFAULTS = { weekly: 15, openAt: '', closeAt: '' };
 const CHARS = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
 const $ = s => document.querySelector(s);
@@ -142,6 +142,12 @@ const weekEnd = wk => { const i = WEEKS.indexOf(wk); if (i < 0 || i === WEEKS.le
   const d = new Date(WEEKS[i + 1] + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
 const weekLabel = wk => { const f = x => (+x.slice(5, 7)) + '/' + (+x.slice(8)); return f(wk) + '–' + f(weekEnd(wk)); };
 const ended = () => today() > EVENT_END;
+// 每日開放建立集點卡的時段（空白＝不限）
+const nowHM = () => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+const openNow = () => { const t = nowHM(), a = settings.openAt, b = settings.closeAt;
+  if (a && t < a) return false; if (b && t > b) return false; return true; };
+const hoursText = () => settings.openAt || settings.closeAt
+  ? `每天 ${settings.openAt || '00:00'}～${settings.closeAt || '23:59'}` : '';
 const hm = t => t ? new Date(t).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
 const md = d => d ? d.slice(5).replace('-', '/') : '';
 const store = {
@@ -227,7 +233,8 @@ function customerView(){
       V.innerHTML = `
         <div class="card">${quotaHTML()}${left() === 0 ? '<div class="msg warn">本週名額已滿，仍可開卡累計，滿 $500 可登記候補</div>' : ''}</div>
         ${ended() ? '<div class="card"><div class="msg bad"><b>活動已於 11/08 結束</b>，謝謝大家參加！</div></div>' : ''}
-        <div class="card" ${ended() ? 'hidden' : ''}><h2>開一張集點卡</h2>
+        ${!ended() && !openNow() ? `<div class="card"><div class="msg warn" style="font-size:16px;line-height:1.7"><b>集點卡目前還沒開放建立</b><br>開放時間：${hoursText()}<br>請在開放時間內再打開這個網頁。</div></div>` : ''}
+        <div class="card" ${ended() || !openNow() ? 'hidden' : ''}><h2>開一張集點卡</h2>
           <p style="font-size:15px">在花園夜市消費後，請老闆確認<b>攤位排號</b>和<b>消費金額</b>，自己輸入累計，滿 <b>$${MIN}</b> 就能換茄芷袋。</p>
           <div><label for="nm">姓名</label><input id="nm" autocomplete="name" placeholder="與領取時簽名相同"></div>
           <div><label for="tl">手機號碼（名額釋出時通知遞補用）</label><input id="tl" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="09xxxxxxxx"></div>
@@ -281,6 +288,7 @@ function customerView(){
   }
 
   async function create(){
+    if (!openNow()) { render(); return; }
     const name = $('#nm').value.trim(), phone = $('#tl').value.replace(/\D/g, ''), tail = phone.slice(-3);
     if (!name) { $('#err').innerHTML = `<div class="msg bad">請填姓名</div>`; return; }
     if (!/^09\d{8}$/.test(phone)) { $('#err').innerHTML = `<div class="msg bad">請填 10 碼手機號碼，例如 0912345678</div>`; return; }
@@ -340,6 +348,8 @@ function customerView(){
   }
 
   listen();
+  let wasOpen = openNow();
+  setInterval(() => { const o = openNow(); if (o !== wasOpen) { wasOpen = o; if (!card) render(); } }, 30000);
 }
 
 /* ═════════ 服務台 ═════════ */
@@ -426,6 +436,11 @@ function deskView(){
       P.innerHTML = `
         <div class="card"><h2>活動設定</h2>
           <div><label for="wk">每週名額</label><input id="wk" type="number" value="${settings.weekly}"></div>
+          <div class="row">
+            <div><label for="oa">每天幾點開放開卡</label><input id="oa" type="time" value="${esc(settings.openAt)}"></div>
+            <div><label for="ca">幾點停止開卡</label><input id="ca" type="time" value="${esc(settings.closeAt)}"></div>
+          </div>
+          <p class="foot" style="text-align:left">留空白＝全天開放。只限制「開新集點卡」，已經開好的卡還是可以繼續新增消費和領袋。</p>
           <button id="save">儲存設定</button><div id="sMsg"></div>
         </div>
         <div class="card"><h2>民眾集點卡 QR code</h2>
@@ -444,7 +459,7 @@ function deskView(){
       new QRCode($('#cqr'), { text: baseURL, width: 440, height: 440 });
       $('#save').onclick = async () => {
         const weekly = Math.max(0, parseInt($('#wk').value, 10) || 0);
-        await R('settings').update({ weekly });
+        await R('settings').update({ weekly, openAt: $('#oa').value || '', closeAt: $('#ca').value || '' });
         $('#sMsg').innerHTML = `<div class="msg ok">已儲存</div>`;
       };
       $('#out').onclick = () => auth.signOut();
