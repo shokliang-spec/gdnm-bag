@@ -221,7 +221,7 @@ function customerView(){
       V.innerHTML = `
         <div class="card">${quotaHTML()}${left() === 0 ? '<div class="msg warn">本週名額已滿，仍可開卡累計，滿 $500 可登記候補</div>' : ''}</div>
         <div class="card"><h2>開一張集點卡</h2>
-          <p style="font-size:15px">在花園夜市消費後，自己輸入<b>攤位排號</b>和金額，累計滿 <b>$${MIN}</b> 就能換茄芷袋。</p>
+          <p style="font-size:15px">在花園夜市消費後，請老闆確認<b>攤位排號</b>和<b>消費金額</b>，自己輸入累計，滿 <b>$${MIN}</b> 就能換茄芷袋。</p>
           <div><label for="nm">姓名</label><input id="nm" autocomplete="name" placeholder="與領取時簽名相同"></div>
           <div><label for="tl">手機號碼（名額釋出時通知遞補用）</label><input id="tl" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="09xxxxxxxx"></div>
           <label class="check" for="ag"><input type="checkbox" id="ag"><span>我同意姓名與手機號碼僅供本活動兌換、簽收核對及遞補通知使用，活動結束後刪除。</span></label>
@@ -263,7 +263,7 @@ function customerView(){
       <div class="card" id="confirm" hidden></div>
       <div class="card"><h2>已登記的消費</h2><div class="list">${items.length ? items.map(i => `
         <div class="item"><span class="code">${esc(i.stall)}</span><div><div class="sub">${hm(i.ts)}</div></div><b>${money(i.amount)}</b></div>`).join('')
-        : '<p style="color:var(--muted);font-size:14px">還沒有消費紀錄。買完東西後，問老闆攤位是幾排幾號，按上方按鈕新增。</p>'}</div></div>`;
+        : '<p style="color:var(--muted);font-size:14px">還沒有消費紀錄。買完東西後，請老闆確認攤位排號和消費金額，再按上方按鈕新增。</p>'}</div></div>`;
     if ($('#ask')) $('#ask').onclick = () => { panel = true; showConfirm(); };
     if (panel) showConfirm();
   }
@@ -287,12 +287,15 @@ function customerView(){
     const el = $('#confirm'); if (!el) return;
     el.hidden = false;
     el.innerHTML = `
-      <h2>新增消費（請問老闆攤位是幾排幾號）</h2>
+      <h2>新增一筆消費</h2>
+      <div class="msg warn" style="font-size:15px;line-height:1.7"><b>請向老闆確認兩件事：</b><br>
+        ① 攤位是<b>幾排幾號</b>（攤位有好幾格的，任選其中一格的排號即可）<br>
+        ② 這次的<b>消費金額</b></div>
       <div class="row">
         <div><label for="rw">第幾排</label><input id="rw" inputmode="numeric" maxlength="3" placeholder="例：3" autocomplete="off"></div>
         <div><label for="no">第幾號</label><input id="no" inputmode="numeric" maxlength="3" placeholder="例：12" autocomplete="off"></div>
       </div>
-      <div><label for="am">這次消費金額</label><input id="am" inputmode="numeric" placeholder="例：120" autocomplete="off"></div>
+      <div><label for="am">消費金額（請老闆確認）</label><input id="am" inputmode="numeric" placeholder="例：120" autocomplete="off"></div>
       <div id="cerr"></div>
       <div class="row"><button class="ghost" id="cx">取消</button><button id="ok">加入累計</button></div>`;
     $('#cx').onclick = () => { panel = false; el.hidden = true; };
