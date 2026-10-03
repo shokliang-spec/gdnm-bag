@@ -341,19 +341,20 @@ function deskView(){
     if (offContacts) { offContacts(); offContacts = null; }
     $('#view').innerHTML = `
       <div class="card"><h2>服務台登入</h2>
-        <div><label for="em">帳號（Email）</label><input id="em" type="email" autocomplete="username"></div>
+        <div><label for="em">帳號</label><input id="em" autocomplete="username" autocapitalize="off" placeholder="例：desk"></div>
         <div><label for="pw">密碼</label><input id="pw" type="password" autocomplete="current-password"></div>
         <button id="in">登入</button><div id="err">${msg}</div></div>`;
     const go = async () => {
       $('#in').disabled = true;
-      try { await auth.signInWithEmailAndPassword($('#em').value.trim(), $('#pw').value); }
+      let acc = $('#em').value.trim().toLowerCase(); if (acc && !acc.includes('@')) acc += '@gdnm.life';
+      try { await auth.signInWithEmailAndPassword(acc, $('#pw').value); }
       catch (e) {
         $('#in').disabled = false;
         const why = {
           'auth/invalid-credential': '帳號或密碼不對。請確認 Firebase「Authentication → 使用者」裡有這個帳號，密碼也打對。',
           'auth/wrong-password': '密碼不對，請再試一次。',
           'auth/user-not-found': '找不到這個帳號，請到 Firebase「Authentication → 使用者」新增。',
-          'auth/invalid-email': 'Email 格式不對。',
+          'auth/invalid-email': '帳號格式不對，只能用英文字母、數字。',
           'auth/operation-not-allowed': 'Firebase 還沒開啟「電子郵件/密碼」登入，請到 Authentication → 登入方式 開啟。',
           'auth/configuration-not-found': 'Firebase 還沒開啟登入功能，請到 Authentication 按「開始使用」並開啟「電子郵件/密碼」。',
           'auth/too-many-requests': '嘗試太多次，請等幾分鐘再試。',
@@ -420,7 +421,7 @@ function deskView(){
           <p class="foot">印出來貼在服務台和各攤位，民眾掃描就能開集點卡。</p>
         </div>
         <div class="card"><h2>帳號</h2>
-          <p style="font-size:14px;color:var(--muted)">目前登入：${esc(auth.currentUser?.email || '')}</p>
+          <p style="font-size:14px;color:var(--muted)">目前登入：${esc((auth.currentUser?.email || '').replace('@gdnm.life',''))}</p>
           <button class="ghost" id="out">登出</button>
         </div>
         <div class="card"><h2>活動結束後</h2>
