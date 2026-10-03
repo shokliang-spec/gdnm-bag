@@ -344,7 +344,20 @@ function deskView(){
     const go = async () => {
       $('#in').disabled = true;
       try { await auth.signInWithEmailAndPassword($('#em').value.trim(), $('#pw').value); }
-      catch (e) { $('#in').disabled = false; $('#err').innerHTML = `<div class="msg bad">帳號或密碼不對，請再試一次</div>`; }
+      catch (e) {
+        $('#in').disabled = false;
+        const why = {
+          'auth/invalid-credential': '帳號或密碼不對。請確認 Firebase「Authentication → 使用者」裡有這個帳號，密碼也打對。',
+          'auth/wrong-password': '密碼不對，請再試一次。',
+          'auth/user-not-found': '找不到這個帳號，請到 Firebase「Authentication → 使用者」新增。',
+          'auth/invalid-email': 'Email 格式不對。',
+          'auth/operation-not-allowed': 'Firebase 還沒開啟「電子郵件/密碼」登入，請到 Authentication → 登入方式 開啟。',
+          'auth/configuration-not-found': 'Firebase 還沒開啟登入功能，請到 Authentication 按「開始使用」並開啟「電子郵件/密碼」。',
+          'auth/too-many-requests': '嘗試太多次，請等幾分鐘再試。',
+          'auth/network-request-failed': '網路連線失敗，請檢查網路。'
+        }[e.code] || ('登入失敗（' + (e.code || e.message) + '）');
+        $('#err').innerHTML = `<div class="msg bad">${esc(why)}</div>`;
+      }
     };
     $('#in').onclick = go; $('#pw').onkeydown = e => { if (e.key === 'Enter') go(); };
   }
