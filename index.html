@@ -134,12 +134,14 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = n => '$' + Number(n || 0).toLocaleString('zh-TW');
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });   // YYYY-MM-DD
-const weekOf = day => {                                   // 週一為一週開始
-  const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7);
-  return d.toISOString().slice(0, 10);
-};
-const weekLabel = wk => { const d = new Date(wk + 'T12:00:00Z'); const e = new Date(d); e.setUTCDate(e.getUTCDate() + 6);
-  return `${d.getUTCMonth()+1}/${d.getUTCDate()}–${e.getUTCMonth()+1}/${e.getUTCDate()}`; };
+// 活動週次：從 10/10（六）開始，每 7 天一週，最後一週到 11/08（日）
+const WEEKS = ['2026-10-10', '2026-10-17', '2026-10-24', '2026-10-31'];
+const EVENT_END = '2026-11-08';
+const weekOf = day => { let w = WEEKS[0]; for (const s of WEEKS) if (day >= s) w = s; return w; };
+const weekEnd = wk => { const i = WEEKS.indexOf(wk); if (i < 0 || i === WEEKS.length - 1) return EVENT_END;
+  const d = new Date(WEEKS[i + 1] + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); };
+const weekLabel = wk => { const f = x => (+x.slice(5, 7)) + '/' + (+x.slice(8)); return f(wk) + '–' + f(weekEnd(wk)); };
+const ended = () => today() > EVENT_END;
 const hm = t => t ? new Date(t).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
 const md = d => d ? d.slice(5).replace('-', '/') : '';
 const store = {
@@ -224,7 +226,8 @@ function customerView(){
     if (!card){
       V.innerHTML = `
         <div class="card">${quotaHTML()}${left() === 0 ? '<div class="msg warn">本週名額已滿，仍可開卡累計，滿 $500 可登記候補</div>' : ''}</div>
-        <div class="card"><h2>開一張集點卡</h2>
+        ${ended() ? '<div class="card"><div class="msg bad"><b>活動已於 11/08 結束</b>，謝謝大家參加！</div></div>' : ''}
+        <div class="card" ${ended() ? 'hidden' : ''}><h2>開一張集點卡</h2>
           <p style="font-size:15px">在花園夜市消費後，請老闆確認<b>攤位排號</b>和<b>消費金額</b>，自己輸入累計，滿 <b>$${MIN}</b> 就能換茄芷袋。</p>
           <div><label for="nm">姓名</label><input id="nm" autocomplete="name" placeholder="與領取時簽名相同"></div>
           <div><label for="tl">手機號碼（名額釋出時通知遞補用）</label><input id="tl" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="09xxxxxxxx"></div>
@@ -267,7 +270,7 @@ function customerView(){
           ${status}
         </div>
       </div>
-      ${!card.status ? `<button id="ask" class="red">＋ 新增一筆消費</button>` : ''}
+      ${!card.status && !ended() ? `<button id="ask" class="red">＋ 新增一筆消費</button>` : ''}
       <div class="card" id="confirm" hidden></div>
       <div class="card"><h2>已登記的消費</h2><div class="list">${items.length ? items.map(i => `
         <div class="item"><span class="code">${esc(i.stall)}</span><div><div class="sub">${hm(i.ts)}</div></div><b>${money(i.amount)}</b></div>`).join('')
@@ -493,8 +496,7 @@ function deskView(){
   }
 
   function paintLog(){
-    const wks = []; for (let d = new Date('2026-10-05T12:00:00Z'); d <= new Date('2026-11-02T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 7)) wks.push(d.toISOString().slice(0,10));
-    if (!wks.includes(WK)) wks.push(WK);
+    const wks = [...WEEKS];
     const rows = weekCards.filter(c => c.slot).sort((a,b) => a.slot - b.slot);
     const waits = weekCards.filter(isWait).sort((a,b) => (a.waitNo||0) - (b.waitNo||0));
     const pend = weekCards.filter(c => !c.slot && !isWait(c) && c.total > 0).length;
