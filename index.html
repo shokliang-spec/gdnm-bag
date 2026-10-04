@@ -466,8 +466,17 @@ function deskView(){
       $('#wipe').onclick = async () => {
         const b = $('#wipe');
         if (!b.dataset.armed){ b.dataset.armed = 1; b.textContent = '確定要刪除全部？再按一次'; return; }
-        await R('cards').remove(); await R('contacts').remove(); await R('weeks').remove();
-        b.textContent = '已刪除全部民眾資料'; b.disabled = true;
+        b.disabled = true; b.textContent = '刪除中…';
+        try {
+          await R('cards').remove(); await R('contacts').remove();
+          // 名額要一週一週清（資料庫規則只允許逐週寫入）
+          const ws = (await R('weeks').get()).val() || {};
+          for (const k of new Set([...Object.keys(ws), ...WEEKS])) await R('weeks/' + k).remove();
+          b.textContent = '已刪除全部民眾資料，名額已歸零';
+        } catch (e) {
+          b.disabled = false; delete b.dataset.armed; b.textContent = '刪除全部民眾資料';
+          $('#sMsg') && ($('#sMsg').innerHTML = `<div class="msg bad">刪除失敗（${esc(e.code || e.message)}），請重新登入後再試</div>`);
+        }
       };
     }
   }
